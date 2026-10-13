@@ -21,7 +21,7 @@ baseline='{
 owner=$(gh api user --jq .login)
 changed=0
 for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name --jq '.[].name'); do
-  current=$(gh api "repos/$owner/$r")
+  current=$(gh api -H "Cache-Control: no-cache" "repos/$owner/$r")
   # Keep only baseline keys whose current value differs.
   diff=$(jq -n --argjson want "$baseline" --argjson have "$current" \
     '$want | with_entries(select($have[.key] != .value))')

@@ -4,7 +4,7 @@ set -euo pipefail
 owner=$(gh api user --jq .login)
 printf "repo\tvis\tdefault\tmerge(c/s/r)\tdel_branch\tauto_merge\tupdate_branch\tissues\twiki\tprojects\tsecret_scan\tpush_prot\tdependabot_sec\tvuln_alerts\tprotection\trulesets\n"
 for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name --jq '.[].name'); do
-  j=$(gh api "repos/$owner/$r")
+  j=$(gh api -H "Cache-Control: no-cache" "repos/$owner/$r")
   base=$(jq -r '[.name,.visibility,.default_branch,
     "\(.allow_merge_commit|tostring|.[0:1])/\(.allow_squash_merge|tostring|.[0:1])/\(.allow_rebase_merge|tostring|.[0:1])",
     .delete_branch_on_merge,.allow_auto_merge,.allow_update_branch,.has_issues,.has_wiki,.has_projects,
