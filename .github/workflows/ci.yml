@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Runs this repo's own reusable workflows against itself.
+jobs:
+  secrets:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/secret-scan.yml
+
+  workflows:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/workflow-lint.yml

@@ -1,0 +1,8 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin
+  # The "$/..." self-repository syntax isn't understood by actionlint 1.7.12 yet.
+  self-repository:
+    disable: true
