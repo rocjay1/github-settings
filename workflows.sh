@@ -23,9 +23,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 # opts the repo out.
 jobs_for() {
   case "$1" in
-    core-infra)        printf '%s\n' secrets workflows ;;
-    mac-config)        printf '%s\n' secrets ;;
-    rocjay1.github.io) printf '%s\n' secrets ;;
+    applebridge|copilot-config|core-infra|mac-config|rocjay1.github.io|simplifi-cli)
+                       printf '%s\n' secrets workflows ;;
     github-settings)   ;;  # calls its own workflows by local path (ci.yml)
     cop-rehearsal)     ;;  # throwaway repo
     *) return 1 ;;
@@ -166,8 +165,9 @@ for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name 
   if [[ -z "$spec" ]]; then echo "$r: opted out"; continue; fi
   findings=""
 
-  # All jobs across the repo's workflows: "file|id|name|uses".
+  # All jobs across the repo's workflows: "file|id|name|uses"; every uses: as "file|ref".
   all_jobs=""
+  all_uses=""
   have=""
   files=$(gh api -H "Cache-Control: no-cache" "repos/$owner/$r/contents/.github/workflows" \
     --jq '.[] | select(.name | test("\\.ya?ml$")) | .name' 2>/dev/null) || files=""
@@ -175,6 +175,7 @@ for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name 
     content=$(fetch "$r" ".github/workflows/$f") || continue
     if [[ ".github/workflows/$f" == "$path" ]]; then have=$content; fi
     all_jobs+=$(list_jobs <<<"$content" | sed "s#^#$f|#")$'\n'
+    all_uses+=$(sed -nE "s#^[[:space:]]*(- )?uses:[[:space:]]*['\"]?([^'\" ]+).*#$f|\2#p" <<<"$content")$'\n'
   done
 
   # Keep the tag already pinned in the managed file (Dependabot moves it); else the latest.
@@ -225,6 +226,12 @@ for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name 
         zizmor_allows <<<"$zc" || flag "$zcfg lacks \"rocjay1/github-settings/*\": ref-pin under unpinned-uses policies"
       elif [[ -n "$cfg" ]]; then
         flag "zizmor-config $cfg does not exist"
+      else
+        # The built-in config hash-pins everything but this repo's workflows.
+        while IFS='|' read -r f ref; do
+          case "$ref" in ""|./*|docker://*|"$uses_prefix"*) continue ;; esac
+          [[ "${ref##*@}" =~ ^[0-9a-f]{40}$ ]] || flag "$f uses $ref; the built-in zizmor config needs a commit hash pin"
+        done <<<"$(sort -u <<<"$all_uses")"
       fi
     fi
 
