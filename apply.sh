@@ -33,6 +33,7 @@ required_checks() {
   case "$1" in
     mac-config)     printf '%s\n' test lint secrets ;;
     applebridge)    printf '%s\n' test ;;
+    rocjay1.github.io) printf '%s\n' build "secrets / secrets" ;;
     copilot-config) printf '%s\n' "offline (macos-latest)" "offline (windows-latest)" ;;
   esac
 }
