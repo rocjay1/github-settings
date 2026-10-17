@@ -29,12 +29,18 @@ ruleset_name="default-branch-standards"
 actions_app_id=15368  # GitHub Actions
 
 # Required checks for repos that had no protection to inherit them from. One context per line.
+# "secrets / secrets" and "workflows / workflows" come from the shared callers that
+# workflows.sh manages; a repo's shared.yml must be on its default branch before these apply.
+# workflows.sh reads this function on its own, so keep everything it needs inside it.
 required_checks() {
+  local shared_checks=("secrets / secrets" "workflows / workflows")
   case "$1" in
-    mac-config)     printf '%s\n' test lint secrets ;;
-    applebridge)    printf '%s\n' test ;;
-    rocjay1.github.io) printf '%s\n' build "secrets / secrets" ;;
-    copilot-config) printf '%s\n' "offline (macos-latest)" "offline (windows-latest)" ;;
+    mac-config)        printf '%s\n' test lint "${shared_checks[@]}" ;;
+    applebridge)       printf '%s\n' test "${shared_checks[@]}" ;;
+    rocjay1.github.io) printf '%s\n' build "${shared_checks[@]}" ;;
+    copilot-config)    printf '%s\n' "offline (macos-latest)" "offline (windows-latest)" "${shared_checks[@]}" ;;
+    core-infra)        printf '%s\n' "terraform / terraform" "docs / docs" "${shared_checks[@]}" ;;
+    simplifi-cli)      printf '%s\n' "test (3.10)" "test (3.13)" "test (3.14)" package "${shared_checks[@]}" ;;
   esac
 }
 
