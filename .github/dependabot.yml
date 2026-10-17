@@ -1,0 +1,18 @@
+# Managed by rocjay1/github-settings (dependabot.sh). Edit it there; changes here get overwritten.
+version: 2
+
+multi-ecosystem-groups:
+  monthly:
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "build(deps)"
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    assignees: ["rocjay1"]
+    patterns: ["*"]
+    multi-ecosystem-group: "monthly"
+    cooldown:
+      default-days: 7
