@@ -18,6 +18,10 @@ baseline='{
   "has_projects": false
 }'
 
+# Secret scanning + push protection: free on public repos; private repos need GitHub
+# Secret Protection (not part of Pro), so they're skipped.
+public_security='{"secret_scanning": "enabled", "secret_scanning_push_protection": "enabled"}'
+
 # Default-branch ruleset (Pro: enforced on private repos too). Required status checks are
 # per repo: taken from required_checks below if listed, else kept from the repo's existing
 # ruleset, else from classic branch protection (which is then removed in favour of the ruleset).
@@ -117,6 +121,22 @@ for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name 
     if $apply; then
       gh api -X PATCH "repos/$owner/$r" --input - <<<"$diff" >/dev/null
       echo "$r: applied"
+    fi
+  fi
+  if [[ "$(jq -r .visibility <<<"$current")" == "public" ]]; then
+    sec=$(jq -n --argjson want "$public_security" --argjson have "$current" \
+      '$want | with_entries(select(($have.security_and_analysis[.key].status // "disabled") != .value))')
+    if [[ "$sec" == "{}" ]]; then
+      echo "$r: security ok"
+    else
+      changed=$((changed + 1))
+      jq -r --arg r "$r" --argjson have "$current" \
+        'to_entries[] | "\($r): \(.key) \($have.security_and_analysis[.key].status // "disabled") -> \(.value)"' <<<"$sec"
+      if $apply; then
+        jq '{security_and_analysis: map_values({status: .})}' <<<"$sec" \
+          | gh api -X PATCH "repos/$owner/$r" --input - >/dev/null
+        echo "$r: applied"
+      fi
     fi
   fi
   ensure_ruleset "$r"
