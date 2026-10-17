@@ -139,6 +139,19 @@ for r in $(gh repo list "$owner" --limit 500 --no-archived --source --json name 
       fi
     fi
   fi
+  # Immutable releases: a published release's tag can't be moved or deleted. Only covers
+  # releases published after it's enabled. Callers of github-settings' reusable workflows
+  # pin to these tags.
+  if [[ "$(gh api -H "Cache-Control: no-cache" "repos/$owner/$r/immutable-releases" --jq .enabled)" == "true" ]]; then
+    echo "$r: immutable releases ok"
+  else
+    changed=$((changed + 1))
+    echo "$r: immutable releases false -> true"
+    if $apply; then
+      gh api -X PUT "repos/$owner/$r/immutable-releases" >/dev/null
+      echo "$r: applied"
+    fi
+  fi
   ensure_ruleset "$r"
 done
 

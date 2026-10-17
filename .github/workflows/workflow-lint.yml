@@ -7,15 +7,20 @@ name: Workflow lint
 #     workflows:
 #       permissions:
 #         contents: read
-#       uses: rocjay1/github-settings/.github/workflows/workflow-lint.yml@<sha> # <ref>
+#       uses: rocjay1/github-settings/.github/workflows/workflow-lint.yml@v1.0.0
+#
+# Pin an exact release tag (vX.Y.Z), never a branch or a floating major tag. Releases
+# here are immutable, so a release tag can't be moved to another commit.
 
 on:
   workflow_call:
     inputs:
       zizmor-config:
         description: >-
-          Path to the zizmor config in the caller repo. When the default path is
-          missing, zizmor runs with its defaults; a non-default path must exist.
+          Path to the zizmor config in the caller repo. A non-default path must
+          exist. When the default path is missing, a built-in config is used:
+          hash-pin everything except rocjay1/github-settings, which may be
+          pinned by release tag. A caller's own config needs that same rule.
         type: string
         default: .github/zizmor.yml
 
@@ -62,6 +67,17 @@ jobs:
             echo "::error::zizmor config ${ZIZMOR_CONFIG} not found"
             exit 1
           else
-            echo "::notice::No ${ZIZMOR_CONFIG}; running zizmor with its defaults"
+            echo "::notice::No ${ZIZMOR_CONFIG}; using the built-in zizmor config"
+            default="${RUNNER_TEMP}/zizmor.yml"
+            cat > "${default}" <<'YAML'
+          rules:
+            unpinned-uses:
+              config:
+                policies:
+                  "*": hash-pin
+                  # Immutable release tags; see the header of this workflow.
+                  "rocjay1/github-settings/*": ref-pin
+          YAML
+            args=(--config "${default}")
           fi
           uvx "zizmor@${ZIZMOR_VERSION}" "${args[@]}" --format=github .
