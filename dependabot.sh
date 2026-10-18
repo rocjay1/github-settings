@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Render each repo's .github/dependabot.yml from shared conventions plus the per-repo
 # entries below, and diff it against what the repo has.
-# Dry run by default; pass --apply to open a PR in each repo that differs. Further
+# Dry run by default; pass --apply to open a PR in each repo that differs, or --check to
+# exit 1 when any repo differs (scheduled drift check, drift.yml). Further
 # arguments limit the run to those repos: ./dependabot.sh --apply applebridge
 set -euo pipefail
 
-apply=false
-[[ "${1:-}" == "--apply" ]] && { apply=true; shift; }
+apply=false check_only=false
+case "${1:-}" in --apply) apply=true; shift ;; --check) check_only=true; shift ;; esac
 only=("$@")
 
 path=".github/dependabot.yml"
@@ -153,3 +154,5 @@ done
 if ! $apply && (( changed > 0 )); then
   echo; echo "Dry run: $changed repo(s) differ. Re-run with --apply to open PRs."
 fi
+$check_only && (( changed > 0 )) && exit 1
+exit 0
