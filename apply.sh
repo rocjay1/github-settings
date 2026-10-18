@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Apply the repo settings baseline to your personal GitHub repos.
-# Dry run by default; pass --apply to write changes. Assumes GitHub Pro (rulesets enforced on private repos).
+# Dry run by default; pass --apply to write changes, or --check to exit 1 when anything
+# differs (scheduled drift check, drift.yml). Assumes GitHub Pro (rulesets enforced on private repos).
 set -euo pipefail
 
-apply=false
-[[ "${1:-}" == "--apply" ]] && apply=true
+apply=false check_only=false
+case "${1:-}" in --apply) apply=true ;; --check) check_only=true ;; esac
 
 # Desired settings (GitHub REST field names for PATCH /repos/{owner}/{repo}).
 baseline='{
@@ -165,3 +166,5 @@ done
 if ! $apply && (( changed > 0 )); then
   echo; echo "Dry run: $changed change(s) pending. Re-run with --apply to write."
 fi
+$check_only && (( changed > 0 )) && exit 1
+exit 0

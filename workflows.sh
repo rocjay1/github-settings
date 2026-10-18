@@ -6,11 +6,12 @@
 # don't match the check names the callers produce. Rulesets are never changed here (see
 # apply.sh required_checks).
 # Dry run by default; pass --apply to open a draft PR in each repo whose managed file
-# differs. Further arguments limit the run to those repos: ./workflows.sh --apply core-infra
+# differs, or --check to exit 1 when any file differs or any finding remains (scheduled
+# drift check, drift.yml). Further arguments limit the run to those repos: ./workflows.sh --apply core-infra
 set -euo pipefail
 
-apply=false
-[[ "${1:-}" == "--apply" ]] && { apply=true; shift; }
+apply=false check_only=false
+case "${1:-}" in --apply) apply=true; shift ;; --check) check_only=true; shift ;; esac
 only=("$@")
 
 path=".github/workflows/shared.yml"
@@ -272,3 +273,5 @@ if (( issues > 0 )); then echo "$issues finding(s) to fix by hand; this script o
 if ! $apply && (( changed > 0 )); then
   echo "Dry run: $changed repo(s) differ. Re-run with --apply to open draft PRs."
 fi
+$check_only && (( changed + issues > 0 )) && exit 1
+exit 0

@@ -1,0 +1,43 @@
+name: Drift
+
+# Weekly read-only check that every repo still matches this repo's baseline: runs
+# apply.sh, dependabot.sh and workflows.sh with --check, which fail when anything differs.
+# Fix drift locally with the same script and --apply; this workflow never writes.
+#
+# SETTINGS_READ_TOKEN is a fine-grained PAT owned by rocjay1, scoped to all repositories,
+# with Administration read and write (GET /repos hides the merge settings from read-only
+# tokens) and read-only Contents and Metadata. The scripts only write with --apply.
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.SETTINGS_READ_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Repo settings and rulesets
+        run: ./apply.sh --check
+      # Run the remaining checks even when an earlier one finds drift.
+      - name: Dependabot config
+        if: ${{ !cancelled() }}
+        run: ./dependabot.sh --check
+      - name: Shared workflow callers
+        if: ${{ !cancelled() }}
+        run: ./workflows.sh --check
