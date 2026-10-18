@@ -26,6 +26,10 @@ BASELINE = {
 # Secret Protection (not part of Pro), so they're skipped.
 PUBLIC_SECURITY = {"secret_scanning": "enabled", "secret_scanning_push_protection": "enabled"}
 
+# Also free on public repos only: CodeQL default setup (languages auto-detected; "actions"
+# at minimum) and private vulnerability reporting, so findings and reports stay private.
+# Private repos get the gh-aw security-review workflow instead, which files issues there.
+
 # Default-branch ruleset (Pro: enforced on private repos too). Required status checks are
 # per repo: taken from REQUIRED_CHECKS below if listed, else kept from the repo's existing
 # ruleset, else from classic branch protection (which is then removed in favour of the ruleset).
@@ -181,6 +185,26 @@ def main():
                 if args.apply:
                     api(base, "PATCH", {"security_and_analysis":
                                         {k: {"status": v} for k, v in sec.items()}})
+                    print(f"{repo}: applied")
+
+            setup = api(f"{base}/code-scanning/default-setup", fresh=True)
+            if setup["state"] == "configured":
+                print(f"{repo}: code scanning ok")
+            else:
+                changed += 1
+                print(f"{repo}: code scanning default setup {setup['state']} -> configured")
+                if args.apply:
+                    api(f"{base}/code-scanning/default-setup", "PATCH", {"state": "configured"})
+                    print(f"{repo}: applied")
+
+            pvr = api(f"{base}/private-vulnerability-reporting", fresh=True)
+            if pvr["enabled"]:
+                print(f"{repo}: private vulnerability reporting ok")
+            else:
+                changed += 1
+                print(f"{repo}: private vulnerability reporting false -> true")
+                if args.apply:
+                    api(f"{base}/private-vulnerability-reporting", "PUT")
                     print(f"{repo}: applied")
 
         # Immutable releases: a published release's tag can't be moved or deleted. Only
