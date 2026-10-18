@@ -1,7 +1,7 @@
 name: Drift
 
 # Weekly read-only check that every repo still matches this repo's baseline: runs
-# apply.sh, dependabot.sh and workflows.sh with --check, which fail when anything differs.
+# apply.py, dependabot.py and workflows.py with --check, which fail when anything differs.
 # Fix drift locally with the same script and --apply; this workflow never writes.
 #
 # SETTINGS_READ_TOKEN is a fine-grained PAT owned by rocjay1, scoped to all repositories,
@@ -33,11 +33,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Repo settings and rulesets
-        run: ./apply.sh --check
+        run: ./apply.py --check
       # Run the remaining checks even when an earlier one finds drift.
       - name: Dependabot config
         if: ${{ !cancelled() }}
-        run: ./dependabot.sh --check
+        run: ./dependabot.py --check
       - name: Shared workflow callers
         if: ${{ !cancelled() }}
-        run: ./workflows.sh --check
+        run: ./workflows.py --check
