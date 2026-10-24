@@ -67,6 +67,7 @@ asks for findings with a concrete exploit path only, not style or best-practice 
 | applebridge | `security-review-server` | `Sources/AppleBridge/`, `Sources/Backends/`, `shortcuts/src/`, `Package.swift`, `Info.plist` | 15th, 09:17 |
 | applebridge | `security-review-tools` | `Sources/Tools/`, `scripts/`, `.github/`, root dotfiles | 15th, 10:17 |
 | mac-config | `security-review` | whole repo | 22nd, 09:17 |
+| copilot-config | `security-review` | whole repo | 22nd, 10:17 |
 
 Every review excludes tests, prose docs (`README*`, `CHANGELOG*`, `LICENSE*`, `docs/`),
 generated files and lock files. simplifi-cli and applebridge are split into two runs because
@@ -84,7 +85,7 @@ a single run over about 215 KB read only part of the code.
   know yet). Without them, the shared `workflows / workflows` check fails.
 
 A run costs about 17–30 AI credits (AIC), roughly $0.17–0.30, plus 4–10 Actions minutes.
-All six runs together come to about 137 AIC, roughly $1.40, a month.
+All seven runs together come to about 160 AIC, roughly $1.60, a month.
 
 #### The Copilot token
 
@@ -105,15 +106,18 @@ gh secret set COPILOT_GITHUB_TOKEN -R rocjay1/core-infra
 gh secret set COPILOT_GITHUB_TOKEN -R rocjay1/simplifi-cli
 gh secret set COPILOT_GITHUB_TOKEN -R rocjay1/applebridge
 gh secret set COPILOT_GITHUB_TOKEN -R rocjay1/mac-config
+gh secret set COPILOT_GITHUB_TOKEN -R rocjay1/copilot-config
 ```
 
 If the token expires, every review fails until the secret is replaced.
 
 #### Changing the prompt
 
-The six copies are identical except for the frontmatter `description` and `schedule`. The
+The seven copies are identical except for the frontmatter `description` and `schedule`. The
 four split workflows also differ in the paragraph that names their paths and the
-`git ls-files -- …` command. To change the shared wording:
+`git ls-files -- …` command, and copilot-config's names its own focus areas (agent
+instructions and skills, PowerShell scripts) in place of infrastructure as code. To change
+the shared wording:
 
 1. Install the extension once: `gh extension install github/gh-aw`.
 2. In each repo, edit every `security-review*.md` the same way, then recompile:
