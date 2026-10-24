@@ -4,8 +4,8 @@ workflow-lint.yml) against the per-repo table below, and render the managed call
 
 Reports callers that are missing or not pinned to an exact release tag, zizmor configs
 that would reject the tag pin, inline jobs the callers replace, and required checks that
-don't match the check names the callers produce. Rulesets are never changed here (see
-apply.py REQUIRED_CHECKS).
+don't match the check names the callers produce (skipped for apply.py DIRECT_PUSH repos,
+which require none). Rulesets are never changed here (see apply.py REQUIRED_CHECKS).
 
 Dry run by default; pass --apply to open a draft PR in each repo whose managed file
 differs, or --check to exit 1 when any file differs or any finding remains (scheduled
@@ -16,7 +16,7 @@ drift check, drift.yml). Further arguments limit the run to those repos:
 import re
 import sys
 
-from apply import required_checks
+from apply import DIRECT_PUSH, required_checks
 from common import api, current_user, fetch, list_repos, open_pr, parse_args, print_diff, run
 
 PATH = ".github/workflows/shared.yml"
@@ -138,9 +138,11 @@ def check_repo(owner, repo, spec, latest, apply):
     tag = m[1] if m and TAG_RE.fullmatch(m[1]) else latest
     want = render(spec, tag)
 
-    # Required contexts: apply.py's list, else the live ruleset's.
+    # Required contexts: apply.py's list, else the live ruleset's. DIRECT_PUSH repos require
+    # none, so their callers' checks aren't compared.
+    direct_push = repo in DIRECT_PUSH
     required = required_checks(repo)
-    if not required:
+    if not required and not direct_push:
         default_branch = api(f"repos/{owner}/{repo}")["default_branch"]
         required = [c["context"] for r in
                     api(f"repos/{owner}/{repo}/rules/branches/{default_branch}", fresh=True)
@@ -195,7 +197,7 @@ def check_repo(owner, repo, spec, latest, apply):
                     if not re.fullmatch(r"[0-9a-f]{40}", ref.rsplit("@", 1)[-1]):
                         flag(f"{f} uses {ref}; the built-in zizmor config needs a commit hash pin")
 
-        if check not in required:
+        if not direct_push and check not in required:
             flag(f'required checks lack "{check}"; update apply.py REQUIRED_CHECKS')
         if job in required:
             flag(f'required check "{job}" will be replaced by "{check}"; '
