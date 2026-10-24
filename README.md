@@ -85,7 +85,7 @@ a single run over about 215 KB read only part of the code.
   know yet). Without them, the shared `workflows / workflows` check fails.
 
 A run costs about 17–30 AI credits (AIC), roughly $0.17–0.30, plus 4–10 Actions minutes.
-All seven runs together come to about 160 AIC, roughly $1.60, a month.
+All seven runs together come to about 163 AIC, roughly $1.60, a month.
 
 #### The Copilot token
 
