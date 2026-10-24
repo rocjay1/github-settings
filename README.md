@@ -17,6 +17,21 @@ with `--check` and never writes.
 | [`audit.sh`](audit.sh) | Read-only table of every repo's settings. |
 | [`hooks/install.sh`](hooks/install.sh) | Installs a `pre-push` hook that blocks direct pushes to `main`. |
 
+## Default-branch ruleset
+
+`apply.py` gives every repo a `default-branch-standards` ruleset on its default branch. It
+blocks deletion and force pushes, requires linear history, and requires a pull request
+(squash merge only, no approvals, conversations resolved) whose required status checks pass.
+The checks are listed per repo in `REQUIRED_CHECKS`.
+
+**Exception: copilot-config** (listed in `DIRECT_PUSH`). Its ruleset has no pull request
+rule and no required status checks, so the owner can push straight to `main`. The work
+laptop reaches GitHub over SSH on port 443 but can't use `gh`, so it can't open PRs.
+Required checks would block a direct push too, because a newly pushed commit has no passing
+checks yet. Deletion, force pushes and non-linear history are still blocked, and CI still
+runs on every push to `main`, so failures stay visible. A bypass actor wasn't used because
+it skips every rule in the ruleset. Don't install the `pre-push` hook in copilot-config.
+
 ## Security scanning
 
 Public and private repos are scanned differently. On a public repo, issues and Actions logs
@@ -25,8 +40,9 @@ fixed.
 
 ### Public repos: GitHub's free tooling
 
-`apply.py` enforces these on every public repo (copilot-config, github-settings,
-rocjay1.github.io), and the drift check fails if one is turned off:
+`apply.py` enforces these on every public repo (github-settings, rocjay1.github.io), and
+the drift check fails if one is turned off (copilot-config has been private since
+2026-10-24):
 
 - Secret scanning and push protection.
 - CodeQL code scanning with the default setup. Languages are detected automatically; the

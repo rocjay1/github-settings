@@ -33,6 +33,7 @@ PUBLIC_SECURITY = {"secret_scanning": "enabled", "secret_scanning_push_protectio
 # Default-branch ruleset (Pro: enforced on private repos too). Required status checks are
 # per repo: taken from REQUIRED_CHECKS below if listed, else kept from the repo's existing
 # ruleset, else from classic branch protection (which is then removed in favour of the ruleset).
+# Repos in DIRECT_PUSH get neither the pull_request rule nor required checks.
 RULESET_NAME = "default-branch-standards"
 ACTIONS_APP_ID = 15368  # GitHub Actions
 
@@ -54,14 +55,20 @@ REQUIRED_CHECKS = {
     "mac-config": ["test", "lint", *SHARED_CHECKS],
     "applebridge": ["test", *SHARED_CHECKS],
     "rocjay1.github.io": ["build", *SHARED_CHECKS],
-    "copilot-config": ["offline (macos-latest)", "offline (windows-latest)", *SHARED_CHECKS],
     "core-infra": ["terraform / terraform", "docs / docs", *SHARED_CHECKS],
     "simplifi-cli": ["test (3.10)", "test (3.13)", "test (3.14)", "package", *SHARED_CHECKS],
 }
 
+# Repos whose ruleset leaves out the pull_request and required_status_checks rules, so the
+# owner can push straight to the default branch. A required check blocks a direct push too,
+# since a newly pushed commit has no passing checks yet. Deletion, force-push and linear
+# history stay blocked; CI still runs on push. A bypass actor would skip those rules as well.
+# copilot-config: the work laptop pushes over SSH (port 443) but can't use gh to open PRs.
+DIRECT_PUSH = {"copilot-config"}
+
 
 def required_checks(repo):
-    return list(REQUIRED_CHECKS.get(repo, []))
+    return [] if repo in DIRECT_PUSH else list(REQUIRED_CHECKS.get(repo, []))
 
 
 def show(value):
@@ -69,11 +76,12 @@ def show(value):
     return value if isinstance(value, str) else json.dumps(value)
 
 
-def want_ruleset(checks):
+def want_ruleset(checks, direct_push=False):
     rules = [
         {"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "required_linear_history"},
-        {"type": "pull_request", "parameters": PULL_REQUEST_PARAMS},
     ]
+    if not direct_push:
+        rules.append({"type": "pull_request", "parameters": PULL_REQUEST_PARAMS})
     if checks:
         rules.append({"type": "required_status_checks", "parameters": {
             "do_not_enforce_on_create": False,
@@ -118,16 +126,18 @@ def ensure_ruleset(owner, repo, default_branch, apply):
     have = api(f"{base}/rulesets/{ids[0]}", fresh=True) if ids else None
     classic = api(f"{base}/branches/{default_branch}/protection", missing_ok=True)
 
+    direct_push = repo in DIRECT_PUSH
     checks = required_checks(repo)
-    if not checks and have:
+    if not checks and have and not direct_push:
         checks = [c["context"] for r in have["rules"] if r["type"] == "required_status_checks"
                   for c in r["parameters"]["required_status_checks"]]
-    if not checks and classic:
+    if not checks and classic and not direct_push:
         checks = [c["context"] for c in
                   (classic.get("required_status_checks") or {}).get("checks") or []]
 
-    want = want_ruleset(checks)
-    summary = f"(checks: {', '.join(checks) if checks else 'none'})"
+    want = want_ruleset(checks, direct_push)
+    summary = f"(checks: {', '.join(checks) if checks else 'none'}"
+    summary += ", direct push: no pull request rule)" if direct_push else ")"
     if have is None:
         changes += 1
         print(f"{repo}: create ruleset {RULESET_NAME} {summary}")
